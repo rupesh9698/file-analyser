@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Prevent Chainlit default config creation
-RUN mkdir -p /app/.chainlit && touch /app/.chainlit/config.toml
+# Clean any existing .chainlit to avoid stale/outdated config
+RUN rm -rf /app/.chainlit
 
 # Copy application
 COPY app.py .
