@@ -12,16 +12,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Prevent Chainlit default config creation
+RUN mkdir -p /app/.chainlit && touch /app/.chainlit/config.toml
+
 # Copy application
 COPY app.py .
-
-# Clean up Chainlit config to avoid issues
-RUN rm -rf .chainlit
 
 EXPOSE 7860
 
 ENV CHAINLIT_TELEMETRY_ENABLED=false
 ENV PORT=7860
 
-# Support both Chainlit and standard Python run
 CMD ["chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "7860", "--headless"]
