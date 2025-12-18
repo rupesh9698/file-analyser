@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.chainlit/
+.files/
+.env
+chainlit.md
+.DS_Store
+venv/
+.env/
+.venv/

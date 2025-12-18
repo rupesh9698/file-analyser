@@ -5,22 +5,23 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy requirements first for caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
+# Copy application
 COPY app.py .
 
-# Remove any existing chainlit config to avoid outdated config issues
-RUN rm -rf /app/.chainlit
+# Clean up Chainlit config to avoid issues
+RUN rm -rf .chainlit
 
 EXPOSE 7860
 
-# Set environment variable to disable telemetry and avoid config issues
 ENV CHAINLIT_TELEMETRY_ENABLED=false
+ENV PORT=7860
 
-# Run on port 7860 for Hugging Face Spaces
+# Support both Chainlit and standard Python run
 CMD ["chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "7860", "--headless"]
