@@ -16,9 +16,9 @@ os.environ["CHAINLIT_TELEMETRY_ENABLED"] = "false"
 # Initialize LLM
 try:
     llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=os.environ.get("GOOGLE_API_KEY"),
-        temperature=0.3,
+        model="gemini-2.5-flash",
+        google_api_key=os.environ.get('GOOGLE_API_KEY'),
+        temperature=0.1
     )
 except Exception as e:
     llm = None
