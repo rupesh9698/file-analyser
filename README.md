@@ -1,5 +1,5 @@
 ---
-title: File Analyzer
+title: File Analyser
 emoji: 📊
 colorFrom: blue
 colorTo: purple
@@ -7,11 +7,12 @@ sdk: docker
 pinned: false
 ---
 
-# File Analyzer
+# File Analyser
 
-An AI-powered file analyzer that can read and analyze various file formats. Ask questions about your data and get intelligent insights.
+An AI-powered file analyser that can read and analyse various file formats. Ask questions about your data and get intelligent insights.
 
 ## Supported Files
+
 - CSV, Excel files
 - Word documents (DOCX)
 - PDF files
@@ -22,11 +23,13 @@ An AI-powered file analyzer that can read and analyze various file formats. Ask 
 - JSON files
 
 ## How to Use
+
 1. Upload your file
 2. Ask questions about your data
 3. Get AI-powered insights and analysis
 
 ## Examples of Questions
+
 - "What are the main trends in this data?"
 - "Show me summary statistics"
 - "What insights can you derive from this document?"

@@ -38,7 +38,7 @@ async def start():
         return
 
     await cl.Message(
-        content="Hello! Upload a file (CSV, XLSX, DOCX, PDF, PPTX, TXT, HTML, XML, JSON) to analyze or translate."
+        content="Hello! Upload a file (CSV, XLSX, DOCX, PDF, PPTX, TXT, HTML, XML, JSON) to analyse or translate."
     ).send()
 
     files = await cl.AskFileMessage(
