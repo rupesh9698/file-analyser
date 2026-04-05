@@ -9,5 +9,7 @@ langchain-google-genai
 langchain-core
 langchain-community
 openpyxl
+xlrd
 anyio
 httpx
+chardet

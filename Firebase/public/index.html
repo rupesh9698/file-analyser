@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Analyser — Launching</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Outfit:wght@200;400;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #03060f;
+    --cyan: #00f5d4;
+    --blue: #0ea5e9;
+    --dim: rgba(0,245,212,0.08);
+    --grid: rgba(0,245,212,0.04);
+    --text: #c8d8e8;
+    --muted: rgba(200,216,232,0.35);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  }
+
+  /* ── GLOW ORBS ── */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    animation: breathe 6s ease-in-out infinite;
+  }
+  .orb1 {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(0,245,212,0.12), transparent 70%);
+    top: -100px; left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0s;
+  }
+  .orb2 {
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(14,165,233,0.1), transparent 70%);
+    bottom: -80px; right: 15%;
+    animation-delay: -3s;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+  }
+  .orb2 { animation: breathe2 6s ease-in-out infinite; }
+  @keyframes breathe2 {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.12); }
+  }
+
+  /* ── SCAN LINE ── */
+  .scanline {
+    position: fixed;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    animation: scanline 3.5s ease-in-out 0.5s forwards;
+    box-shadow: 0 0 20px var(--cyan);
+  }
+  @keyframes scanline {
+    0%   { top: 0%; opacity: 0; }
+    5%   { opacity: 0.6; }
+    90%  { opacity: 0.6; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* ── MAIN STAGE ── */
+  .stage {
+    position: fixed; inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  /* ── FILE ICON CLUSTER ── */
+  .file-cluster {
+    position: relative;
+    width: 120px; height: 130px;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s forwards;
+  }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .file-card {
+    position: absolute;
+    width: 72px; height: 90px;
+    border-radius: 8px 8px 8px 8px;
+    border: 1px solid rgba(0,245,212,0.25);
+    background: rgba(0,245,212,0.04);
+    backdrop-filter: blur(4px);
+  }
+  .file-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; right: -1px;
+    width: 18px; height: 18px;
+    background: var(--bg);
+    border-bottom-left-radius: 6px;
+    border-left: 1px solid rgba(0,245,212,0.25);
+    border-bottom: 1px solid rgba(0,245,212,0.25);
+  }
+  .file-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 0 18px 18px 0;
+    border-color: transparent rgba(0,245,212,0.15) transparent transparent;
+  }
+
+  .fc1 {
+    left: 0; top: 20px;
+    transform: rotate(-8deg);
+    opacity: 0.4;
+    animation: fc1In 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s forwards;
+  }
+  .fc2 {
+    left: 50%; top: 0;
+    transform: translateX(-50%) rotate(0deg);
+    opacity: 0;
+    border-color: rgba(0,245,212,0.5);
+    background: rgba(0,245,212,0.07);
+    animation: fc2In 0.7s cubic-bezier(0.22,1,0.36,1) 0.35s forwards;
+  }
+  .fc3 {
+    right: 0; top: 20px;
+    transform: rotate(8deg);
+    opacity: 0.4;
+    animation: fc3In 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s forwards;
+  }
+  @keyframes fc1In { to { opacity: 0.4; } }
+  @keyframes fc2In { to { opacity: 1; } }
+  @keyframes fc3In { to { opacity: 0.4; } }
+
+  /* lines inside center file */
+  .file-lines {
+    position: absolute;
+    top: 28px; left: 10px; right: 10px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .file-line {
+    height: 2px;
+    background: rgba(0,245,212,0.3);
+    border-radius: 2px;
+    transform-origin: left;
+    animation: lineScan 2s ease-in-out infinite;
+  }
+  .file-line:nth-child(1) { width: 80%; animation-delay: 0s; }
+  .file-line:nth-child(2) { width: 60%; animation-delay: 0.15s; }
+  .file-line:nth-child(3) { width: 90%; animation-delay: 0.3s; }
+  .file-line:nth-child(4) { width: 50%; animation-delay: 0.45s; }
+  .file-line:nth-child(5) { width: 75%; animation-delay: 0.6s; }
+  @keyframes lineScan {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; background: var(--cyan); }
+  }
+
+  /* ── TITLE ── */
+  .title-wrap {
+    text-align: center;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.55s forwards;
+  }
+  .title-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 10px;
+    opacity: 0.7;
+  }
+  h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: #fff;
+    line-height: 1;
+  }
+  h1 span {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(0,245,212,0.6);
+  }
+  .title-sub {
+    margin-top: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 200;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── TERMINAL LOG ── */
+  .terminal {
+    width: min(480px, 90vw);
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(0,245,212,0.15);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 36px;
+    opacity: 0;
+    animation: riseIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.75s forwards;
+    position: relative;
+    overflow: hidden;
+  }
+  .terminal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+  }
+  .log-line {
+    font-size: 11px;
+    line-height: 1.9;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 0;
+  }
+  .log-line.active { color: var(--text); }
+  .log-line .prompt { color: var(--cyan); margin-right: 8px; }
+  .log-line .ok { color: #22c55e; }
+  .log-line .checking { color: var(--blue); }
+  .log-line.running {
+    max-width: 100%;
+    animation: typeIn 0.5s steps(40, end) forwards;
+  }
+  @keyframes typeIn {
+    from { max-width: 0; }
+    to   { max-width: 100%; }
+  }
+
+  /* ── PROGRESS ── */
+  .progress-wrap {
+    width: min(480px, 90vw);
+    opacity: 0;
+    animation: riseIn 0.5s ease 1s forwards;
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .progress-meta .pct {
+    color: var(--cyan);
+    font-weight: 600;
+    font-size: 12px;
+    transition: color 0.3s;
+  }
+  .progress-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(0,245,212,0.1);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--cyan), var(--blue));
+    border-radius: 99px;
+    transition: width 0.15s ease;
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -2px;
+    width: 6px; height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  /* ── PARTICLES ── */
+  .particles {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .particles.show { opacity: 1; }
+  .particle {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: var(--cyan);
+    border-radius: 50%;
+    animation: float linear infinite;
+  }
+  @keyframes float {
+    from { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    to   { transform: translateY(-10vh) translateX(var(--dx)); opacity: 0; }
+  }
+
+  /* ── LAUNCH FLASH ── */
+  .flash {
+    position: fixed; inset: 0;
+    background: var(--cyan);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .flash.go { opacity: 0.15; }
+
+  /* ── DONE STATE ── */
+  .done-msg {
+    margin-top: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0;
+    text-align: center;
+    transition: opacity 0.5s;
+  }
+  .done-msg a {
+    color: var(--cyan);
+    text-decoration: none;
+  }
+  .done-msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="scanline"></div>
+<div class="flash" id="flash"></div>
+
+<!-- floating particles -->
+<div class="particles" id="particles"></div>
+
+<div class="stage">
+
+  <div class="file-cluster">
+    <div class="file-card fc1"></div>
+    <div class="file-card fc3"></div>
+    <div class="file-card fc2">
+      <div class="file-lines">
+        <div class="file-line"></div>
+        <div class="file-line"></div>
+        <div class="file-line"></div>
+        <div class="file-line"></div>
+        <div class="file-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="title-wrap">
+    <div class="title-label">⬡ Powered by Gemini AI</div>
+    <h1>File <span>Analyser</span></h1>
+    <p class="title-sub">CSV · PDF · DOCX · XLSX · PPTX · JSON · HTML</p>
+  </div>
+
+  <div class="terminal" id="terminal">
+    <div class="log-line" id="l1"><span class="prompt">›</span><span class="checking">Initialising runtime environment...</span></div>
+    <div class="log-line" id="l2"><span class="prompt">›</span>Loading language models <span class="ok">✓</span></div>
+    <div class="log-line" id="l3"><span class="prompt">›</span>Connecting to inference engine <span class="ok">✓</span></div>
+    <div class="log-line" id="l4"><span class="prompt">›</span>File parsing modules ready <span class="ok">✓</span></div>
+    <div class="log-line" id="l5"><span class="prompt">›</span><span class="checking">Launching application...</span></div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span>LOADING</span>
+      <span class="pct" id="pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="bar"></div>
+    </div>
+  </div>
+
+  <div class="done-msg" id="doneMsg">
+    Not redirecting? <a href="https://file-analyser.duckdns.org">Click here →</a>
+  </div>
+
+</div>
+
+<script>
+  const TARGET = 'https://file-analyser.duckdns.org';
+
+  // ── PARTICLES ──
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      width: ${Math.random() > 0.7 ? 3 : 2}px;
+      height: ${Math.random() > 0.7 ? 3 : 2}px;
+      animation-duration: ${5 + Math.random() * 10}s;
+      animation-delay: ${Math.random() * 8}s;
+      --dx: ${(Math.random() - 0.5) * 120}px;
+      opacity: ${0.3 + Math.random() * 0.7};
+    `;
+    container.appendChild(p);
+  }
+
+  // ── SEQUENCE ──
+  const lines = ['l1','l2','l3','l4','l5'];
+  const delays = [800, 1400, 2000, 2600, 3400];
+
+  lines.forEach((id, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      el.classList.add('running', 'active');
+    }, delays[i]);
+  });
+
+  // ── PROGRESS BAR ──
+  const bar = document.getElementById('bar');
+  const pct = document.getElementById('pct');
+  const steps = [
+    { target: 15, delay: 600  },
+    { target: 35, delay: 1200 },
+    { target: 58, delay: 1900 },
+    { target: 78, delay: 2500 },
+    { target: 92, delay: 3200 },
+    { target: 100, delay: 3900 },
+  ];
+
+  let current = 0;
+  function animateTo(target, startDelay) {
+    setTimeout(() => {
+      const start = current;
+      const diff = target - start;
+      const duration = 500;
+      const startTime = performance.now();
+      function step(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        current = Math.round(start + diff * eased);
+        bar.style.width = current + '%';
+        pct.textContent = current + '%';
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }, startDelay);
+  }
+  steps.forEach(s => animateTo(s.target, s.delay));
+
+  // ── PARTICLES SHOW ──
+  setTimeout(() => container.classList.add('show'), 1000);
+
+  // ── LAUNCH ──
+  setTimeout(() => {
+    // flash
+    const flash = document.getElementById('flash');
+    flash.classList.add('go');
+    setTimeout(() => flash.classList.remove('go'), 400);
+
+    // show fallback link
+    document.getElementById('doneMsg').classList.add('show');
+
+    // redirect
+    setTimeout(() => {
+      window.location.href = TARGET;
+    }, 500);
+  }, 4400);
+</script>
+</body>
+</html>
