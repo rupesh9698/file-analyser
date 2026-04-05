@@ -483,6 +483,36 @@ async def _run_translation(target_lang: str):
         ).send()
         text = text[:MAX_TRANSLATION_CHARS]
 
+    msg = cl.Message(content=f"🌐 **Translation → {target_lang}**\n\n")
+    await msg.send()
+    try:
+        prompt = ChatPromptTemplate.from_template(
+            "Translate the following text to {target_lang} naturally and accurately.\n"
+            "Preserve all structure: headings, bullet points, tables, numbered lists, and code blocks.\n"
+            "Output ONLY the translated text — no preamble, no explanation.\n\n"
+            "{text}"
+        )
+        chain = prompt | llm | StrOutputParser()
+        async for chunk in chain.astream({"target_lang": target_lang, "text": text}):
+            await msg.stream_token(chunk)
+    except Exception as exc:
+        await msg.stream_token(f"\n\n❌ Translation failed: {exc}")
+
+    await show_main_menu(include_new_file=True)
+    """Stream-translate the loaded document to the chosen language."""
+    content   = cl.user_session.get("content")
+    file_name = cl.user_session.get("file_name", "document")
+    text      = content if isinstance(content, str) else ""
+
+    if len(text) > MAX_TRANSLATION_CHARS:
+        await cl.Message(
+            content=(
+                f"⚠️ Document is large ({len(text):,} chars). "
+                f"Translating the first **{MAX_TRANSLATION_CHARS:,} characters**."
+            )
+        ).send()
+        text = text[:MAX_TRANSLATION_CHARS]
+
     async with cl.Message(content=f"🌐 **Translation → {target_lang}**\n\n") as msg:
         try:
             prompt = ChatPromptTemplate.from_template(
@@ -512,7 +542,6 @@ async def on_message(message: cl.Message):
     file_name = cl.user_session.get("file_name", "the file")
     question  = message.content.strip()
 
-    # Guard: only process input in Q&A mode
     if state != STATE_ASKING:
         await cl.Message(
             content="👆 Please use the **buttons above** to choose an action first."
@@ -526,91 +555,91 @@ async def on_message(message: cl.Message):
     if not question:
         return
 
-    async with cl.Message(content="") as reply:
-        try:
+    reply = cl.Message(content="")
+    await reply.send()
 
-            # ── IMAGE → Gemini Vision ──────────────────────────────────────
-            if category == "image":
-                data_url = f"data:{content['mime']};base64,{content['b64']}"
-                resp = await llm.ainvoke([
-                    HumanMessage(content=[
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                        {"type": "text",      "text": question},
-                    ])
+    try:
+        # ── IMAGE → Gemini Vision ──────────────────────────────────────
+        if category == "image":
+            data_url = f"data:{content['mime']};base64,{content['b64']}"
+            resp = await llm.ainvoke([
+                HumanMessage(content=[
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {"type": "text",      "text": question},
                 ])
-                await reply.stream_token(resp.content)
+            ])
+            await reply.stream_token(resp.content)
 
-            # ── SPREADSHEET ────────────────────────────────────────────────
-            elif category == "spreadsheet":
-                df: pd.DataFrame = content
-                num_cols = df.select_dtypes(include="number").columns.tolist()
-                cat_cols = df.select_dtypes(exclude="number").columns.tolist()
-                summary  = (
-                    f"File: {file_name}\n"
-                    f"Shape: {df.shape[0]:,} rows × {df.shape[1]} columns\n"
-                    f"All columns: {list(df.columns)}\n"
-                    f"Numeric columns: {num_cols}\n"
-                    f"Categorical columns: {cat_cols}\n\n"
-                    f"Data types:\n{df.dtypes.to_string()}\n\n"
-                    f"First 5 rows:\n{df.head(5).to_string()}\n\n"
-                    f"Descriptive statistics:\n{df.describe(include='all').to_string()}"
-                )
-                prompt = ChatPromptTemplate.from_template(
-                    "You are an expert data analyst. Answer using ONLY the dataset information below.\n"
-                    "Show your reasoning step-by-step when calculations are involved.\n"
-                    "If the data is insufficient to answer, say so clearly.\n\n"
-                    "Dataset — {file_name}:\n{summary}\n\n"
-                    "Question: {question}"
-                )
-                chain = prompt | llm | StrOutputParser()
-                async for chunk in chain.astream(
-                    {"file_name": file_name, "summary": summary, "question": question}
-                ):
-                    await reply.stream_token(chunk)
+        # ── SPREADSHEET ────────────────────────────────────────────────
+        elif category == "spreadsheet":
+            df: pd.DataFrame = content
+            num_cols = df.select_dtypes(include="number").columns.tolist()
+            cat_cols = df.select_dtypes(exclude="number").columns.tolist()
+            summary  = (
+                f"File: {file_name}\n"
+                f"Shape: {df.shape[0]:,} rows × {df.shape[1]} columns\n"
+                f"All columns: {list(df.columns)}\n"
+                f"Numeric columns: {num_cols}\n"
+                f"Categorical columns: {cat_cols}\n\n"
+                f"Data types:\n{df.dtypes.to_string()}\n\n"
+                f"First 5 rows:\n{df.head(5).to_string()}\n\n"
+                f"Descriptive statistics:\n{df.describe(include='all').to_string()}"
+            )
+            prompt = ChatPromptTemplate.from_template(
+                "You are an expert data analyst. Answer using ONLY the dataset information below.\n"
+                "Show your reasoning step-by-step when calculations are involved.\n"
+                "If the data is insufficient to answer, say so clearly.\n\n"
+                "Dataset — {file_name}:\n{summary}\n\n"
+                "Question: {question}"
+            )
+            chain = prompt | llm | StrOutputParser()
+            async for chunk in chain.astream(
+                {"file_name": file_name, "summary": summary, "question": question}
+            ):
+                await reply.stream_token(chunk)
 
-            # ── TEXT / DOCUMENTS / CODE ────────────────────────────────────
-            else:
-                history: list[dict] = cl.user_session.get("chat_history", [])
-                history_str = ""
-                if history:
-                    recent = history[-MAX_HISTORY_PAIRS:]
-                    history_str = "Previous conversation:\n" + "\n".join(
-                        f"Q: {h['q']}\nA: {h['a']}" for h in recent
-                    ) + "\n\n"
+        # ── TEXT / DOCUMENTS / CODE ────────────────────────────────────
+        else:
+            history: list[dict] = cl.user_session.get("chat_history", [])
+            history_str = ""
+            if history:
+                recent = history[-MAX_HISTORY_PAIRS:]
+                history_str = "Previous conversation:\n" + "\n".join(
+                    f"Q: {h['q']}\nA: {h['a']}" for h in recent
+                ) + "\n\n"
 
-                text      = str(content)
-                truncated = len(text) > MAX_CONTEXT_CHARS
-                ctx       = text[:MAX_CONTEXT_CHARS]
-                trunc_note = (
-                    f" [first {MAX_CONTEXT_CHARS:,} of {len(text):,} chars]"
-                    if truncated else ""
-                )
+            text      = str(content)
+            truncated = len(text) > MAX_CONTEXT_CHARS
+            ctx       = text[:MAX_CONTEXT_CHARS]
+            trunc_note = (
+                f" [first {MAX_CONTEXT_CHARS:,} of {len(text):,} chars]"
+                if truncated else ""
+            )
 
-                prompt = ChatPromptTemplate.from_template(
-                    "You are an expert document analyst. Answer questions based SOLELY on the "
-                    "document content provided below. Be thorough, specific, and well-structured.\n"
-                    "Quote relevant passages when it adds clarity.\n"
-                    "If the answer is not found in the document, say so explicitly — do not guess.\n\n"
-                    "{history}"
-                    "Document — {file_name}{trunc_note}:\n"
-                    "```\n{context}\n```\n\n"
-                    "Question: {question}"
-                )
-                chain       = prompt | llm | StrOutputParser()
-                full_answer = ""
-                async for chunk in chain.astream({
-                    "history":    history_str,
-                    "file_name":  file_name,
-                    "trunc_note": trunc_note,
-                    "context":    ctx,
-                    "question":   question,
-                }):
-                    full_answer += chunk
-                    await reply.stream_token(chunk)
+            prompt = ChatPromptTemplate.from_template(
+                "You are an expert document analyst. Answer questions based SOLELY on the "
+                "document content provided below. Be thorough, specific, and well-structured.\n"
+                "Quote relevant passages when it adds clarity.\n"
+                "If the answer is not found in the document, say so explicitly — do not guess.\n\n"
+                "{history}"
+                "Document — {file_name}{trunc_note}:\n"
+                "```\n{context}\n```\n\n"
+                "Question: {question}"
+            )
+            chain       = prompt | llm | StrOutputParser()
+            full_answer = ""
+            async for chunk in chain.astream({
+                "history":    history_str,
+                "file_name":  file_name,
+                "trunc_note": trunc_note,
+                "context":    ctx,
+                "question":   question,
+            }):
+                full_answer += chunk
+                await reply.stream_token(chunk)
 
-                # Append to conversation history
-                history.append({"q": question, "a": full_answer})
-                cl.user_session.set("chat_history", history)
+            history.append({"q": question, "a": full_answer})
+            cl.user_session.set("chat_history", history)
 
-        except Exception as exc:
-            await reply.stream_token(f"\n\n❌ Error: {exc}")
+    except Exception as exc:
+        await reply.stream_token(f"\n\n❌ Error: {exc}")

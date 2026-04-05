@@ -11,3 +11,4 @@ chainlit.md
 venv/
 .env/
 .venv/
+instructions.txt
